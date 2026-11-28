@@ -1,0 +1,300 @@
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: shop-infrastrucuture
+      folder: Shop Alerts
+      interval: 1m
+      rules:
+        - uid: bg5nov4y9l8n4f
+          title: Shop-High Node CPU
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: fg5d9g7x5m8zkb
+              model:
+                editorMode: code
+                expr: |-
+                    100 * (1 - avg by (instance) (
+                      rate(node_cpu_seconds_total{mode="idle"}[5m])
+                    ))
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 80
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'Investigate high CPU processes, container workloads and Kubernetes node utilization. Follow runbook: runbooks/high-node-cpu.md'
+            summary: Node CPU usage is above 80% for 5 minutes
+          isPaused: false
+          notification_settings:
+            receiver: empty
+        - uid: bg5npb2hurzswf
+          title: Shop - Low Node Memory
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: fg5d9g7x5m8zkb
+              model:
+                editorMode: code
+                expr: 100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 15
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 5m
+          keepFiringFor: 1m
+          annotations:
+            description: Investigate memory-heavy processes and Kubernetes
+            summary: Available memory is below 15% on a node.
+          labels:
+            service: infrastructure
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: empty
+        - uid: eg5npnwrtshdsb
+          title: Shop - Container Restarts
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: fg5d9g7x5m8zkb
+              model:
+                editorMode: code
+                expr: |-
+                    sum by (namespace, pod) (
+                      increase(kube_pod_container_status_restarts_total{namespace="shop"}[10m])
+                    )
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 'Investigate container logs, pod events and recent deployments. Runbook: runbooks/container-restarts.md'
+            summary: A Shop container has restarted
+          labels:
+            service: kubernetes
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: empty
+        - uid: fg5npt2n0sq9sa
+          title: Shop-Pod Failure
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: fg5d9g7x5m8zkb
+              model:
+                editorMode: code
+                expr: |-
+                    sum(kube_pod_status_phase{
+                      namespace="shop",
+                      phase=~"Pending|Failed|Unknown"
+                    })
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 2m
+          annotations:
+            description: 'Check pod status, events and container logs. Runbook: runbooks/shop-pod-failure.md'
+            summary: One or more Shop pods are not healthy.
+          labels:
+            service: kubernetes
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: empty
+        - uid: dg5npz4kodkaof
+          title: Shop - Frontend Unavailable
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: fg5d9g7x5m8zkb
+              model:
+                editorMode: code
+                expr: |-
+                    sum(kube_pod_status_ready{
+                      namespace="shop",
+                      condition="true",
+                      pod=~"frontend-.*"
+                    }) OR on() vector(0)
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 'Check frontend pod health, Kubernetes events and the frontend service. Runbook: runbooks/frontend-unavailable.md'
+            summary: Online Boutique frontend is unavailable.
+          labels:
+            service: frontend
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: empty
